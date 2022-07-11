@@ -1,0 +1,64 @@
+<!-- game -->
+<!-- <div>
+    <button id="btn_leavegame">게임 나가기</button>
+    <button id="btn_endgame">게임 종료</button>
+</div> -->
+<div id="remainTimeBer">
+    <div class="progress">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"></div>
+    </div>  
+</div> 
+<div id="bar1">
+    <div>
+        <h3>현재 카드</h3>
+        <div id="present_card" class="p-3"></div>
+    </div>
+    <div>
+        <h3>순서</h3>
+        <div id="order"></div>
+    </div>
+    <div>
+        <h3>걸려있는 장수</h3>
+        <div id="먹일카드"></div>
+    </div>
+</div>
+<div id="bar">
+    <button class="btn btn-dark" id="btn_askOnecard">원카드</button>
+    <button class="btn btn-dark" id="btn_draw">카드 뽑기</button>
+    <button class="btn btn-dark" id="btn_turnChange">완료</button>
+</div>
+<div>
+    <h3>내 카드 목록</h3>
+    </h3>
+    <div id="myCards"></div>
+</div>
+<div>
+    <h3>참여자 목록</h3>
+    </h3>
+    <div id="ranking"></div>
+</div>
+<style>
+#bar1>div{
+    display: inline-block;
+    width: 30%;
+}
+/* #ranking>div{
+    display: table-row;
+}
+#ranking>div>*{
+    display: table-cell;
+    padding: 0 10px;
+    white-space:nowrap;
+} */
+#bar1 svg{
+    height: 120px;
+    width: 72px;
+}
+#myCards svg{
+    height: 120px;
+    width: 72px;
+}
+#myCards>div{
+    display: inline-block;
+}
+</style>

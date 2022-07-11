@@ -1,0 +1,51 @@
+<!-- roomsetting -->
+<div class="card"><div class="card-body">
+    <div><label for="init_cnt">초기 장수</label><input id="init_cnt" type="range" step="1" min="2" max="27"
+            value="7"><output id="output_init_cnt">7장</output></div>
+    <div><label for="bankruptcyNum">파산 장수</label><input id="bankruptcyNum" type="range" step="1" min="3" max="56"
+            value="20"><output id="output_bankruptcyNum">7장</output></div>
+    <div><label for="init_waittime">타이머</label><input id="init_waittime" type="range" step="1" min="1" max="120"
+            value="30"><output id="output_init_waittime">30초</output>
+        <label for="init_waittime_inf">무한</label><input id="init_waittime_inf" type="checkbox">
+    </div>
+    <script></script>
+    <script></script>
+    <div><label for="init_roomname">방 이름 변경</label><input id="init_roomname" type="text" value="7" disabled><output
+            id="output_roomname">?</output><button class="btn btn-outline-secondary">반영</button></div>
+    <!-- 이거 따로 빼야함. 중복 체크 해야하기 때문.. -->
+    <script></script>
+
+    <!-- <button>방 삭제</button> -->
+    <button id="btn_backlist" class="btn btn-outline-secondary">메인으로 돌아가기</button>
+</div></div>
+
+<!-- <div class="card"><div class="card-body">
+    <h3>대기자 목록</h3>
+    <div id="wait_list">
+         대기자 목록 
+    </div>
+</div></div> -->
+<div class="card"><div class="card-body">
+    <h3>맴버</h3>
+    <div id="member_list">
+        <!-- 맴버 목록 -->
+    </div>
+</div></div>
+<div class="card"><div class="card-body">
+    <h3>게임 참여자</h3>
+    <div id="participants_list">
+        <!-- 참여자 목록 -->
+    </div>
+    <button id="btn_participantsShuffle" class="btn btn-secondary">순서 섞기</button>
+</div></div>
+<div class="card"><div class="card-body text-center" id="start_game_toggle" data-toggle="tooltip" title="게임 참여자가 2명 이상이여야 게임을 시작할 수 있습니다." >
+    <button id="start_game" class="btn btn-dark btn-lg " disabled >게임 시작</button>
+    
+
+</div></div>
+
+
+<div class="card"><div class="card-body">
+    <h3>역대 기록</h3>
+    <div id="records"></div>
+</div></div>
