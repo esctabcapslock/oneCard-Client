@@ -28,7 +28,7 @@ const getElementById = (id)=>{
 (async ()=>{
     async function getname() {
         const $playerName = document.getElementById('playerName')
-        const data = await fetchJSON('a/player/getNickname', {  })
+        const data = await fetchJSON('a/player/nickname','GET', {})
         console.log('[getname]1',data,$playerName,$playerName.textContent)
         $playerName.innerText = data.nickname//pX()
         nickname = data.nickname
@@ -44,7 +44,7 @@ const getElementById = (id)=>{
         async function check_valid(str) {
             if (!str.trim().length || rmStrangeStr(str) != str || str.length>10) return false
             try {
-                const res = (await fetchJSON('a/player/checkName', {nickname: str}))['valid']
+                const res = (await fetchJSON('a/player/checkName','POST', {nickname: str}))['valid']
                 return res
             } catch (e) {
                 console.log('f', e)
@@ -80,16 +80,27 @@ function rmStrangeStr(str){ // 괴문자 제거. ex. 공백문자. 스프링 도
 /**
  * 
  * @param {string} url - POST 요청을 보낼 주소
+ * @param {"GET"|"POST"|"PUT"|"DELETE"} method - POST 요청을 보낼 주소
  * @param {any} obj  - 오청 내용
  * @returns  - json 파싱한 내용
  */
-export async function fetchJSON(url,obj={}){
+export async function fetchJSON(url,method="POST",obj={}){
     if(obj===undefined) obj = {};
-
-    const data = await fetch(url,{
-        method:"POST",
-        body:JSON.stringify(obj, (key,value)=>(value==Infinity?'Infinity':value))
-    })
+    let data
+    if(!['GET','HEAD'].includes(method)){
+        data = await fetch(url,{
+            method:method,
+            body:JSON.stringify(obj, (key,value)=>(value==Infinity?'Infinity':value))
+        })
+    }else{
+        let out = []
+        let _URL = new URL(location)
+        _URL.pathname = url
+        for(const key in obj) _URL.searchParams.set(key,obj[key])
+        data = await fetch(_URL.toString(),{
+            method:"GET"
+        })
+    }
     if(data.status != 200) {
         if(data.status == 403) location=location
         console.error(`fetch ERROR ${data.status}\nurl:${url}\n obj:${JSON.stringify(obj)}\ndata:${await data.text()}`)
@@ -156,7 +167,7 @@ function sendSetting(){
             waitTime:Number(input_values.init_waittime),
         }
         // console.log('[sendSetting], input_values:',input_values, out)
-        const data = await fetchJSON('a/roominfo/applySetting',{setting:out, roomId:roomInfo.id})
+        const data = await fetchJSON('a/room/setting','POST',{setting:out, roomId:roomInfo.id})
         console.log(data)
         lastsend = new Date()
     }, 100)
@@ -234,12 +245,9 @@ export async function applyRoomlist(){
 
     const $btn_createroom = getElementById('btn_createroom')
     const $roomnameInput = getElementById('input_createroom')
-    // const $roomlistBelong = getElementById('roomlistBelong')
-    // const $roomlistAll = getElementById('roomlistAll')
-
     $btn_createroom.addEventListener('click', async () => {
         try {
-            const roomData = await fetchJSON('/a/room/create', { roomName: $roomnameInput.value })
+            const roomData = await fetchJSON('/a/room','POST', { roomName: $roomnameInput.value })
             s_Roomsetting.apply(roomData, true)
         } catch (e) { console.log(`오류 e:${e}`) }
     });
@@ -248,7 +256,7 @@ export async function applyRoomlist(){
         async function check_valid(str) {
             if (!str.trim().length || rmStrangeStr(str) != str) return false
             try {
-                const res = (await fetchJSON('a/room/checkName', {
+                const res = (await fetchJSON('a/room/checkName','POST', {
                         roomName: str
                     }))['valid']
                 return res
@@ -274,13 +282,13 @@ export async function applyRoomlist(){
 
     async function getroomlistBelong(){
         updateJoinroomList(
-            await fetchJSON('a/room/getRoomListBelong',{}),
-            await fetchJSON('a/room/getRoomListWaiting',{}))
+            await fetchJSON('a/room/belongList','GET',{}),
+            await fetchJSON('a/room/waitingList','GET',{}))
         
     }
    
     async function getroomlistAll(){
-        updateRoomList(await fetchJSON('a/room/getRoomListAll',{}))
+        updateRoomList(await fetchJSON('a/room/allList','GET',{}))
     }
 
     await getroomlistBelong()
@@ -337,33 +345,33 @@ async function roomMemverEvent(mode,nickname){
 
     nickname = decodeURIComponent(nickname)
     if(mode=="수락"){
-        return await fetchJSON('a/roomjoin/join',{roomId:roomid, nickname});
+        return await fetchJSON('a/room/join/list','PUT',{roomId:roomid, nickname});
     }else if(mode=="참여"){
         console.log('참여참여')
         s_Roomsetting.participantsName = [...s_Roomsetting.participantsName,nickname]
         console.log('[roomMemverEvent]2',nickname)
-        return await fetchJSON('a/roomjoin/addParticipants',{roomId:roomid});
+        return await fetchJSON('a/room/join/participants','PUT',{roomId:roomid});
 
     }else if(mode=="강퇴"){
-        return fetchJSON('a/roomjoin/withdraw',{roomId:roomInfo.id, nickname});
+        return fetchJSON('a/room/join/list','DELETE',{roomId:roomInfo.id, nickname});
     }else if(mode=="위"){
         const index = s_Roomsetting.participantsName.indexOf(nickname)
         if(index>0) [s_Roomsetting.participantsName[index], s_Roomsetting.participantsName[index-1]] = [s_Roomsetting.participantsName[index-1],s_Roomsetting.participantsName[index]]
         else {console.log('participants_list',s_Roomsetting.participantsName);throw('잘못된 위치에서 요청됨, 위, ')}
         updateParticipantsInfo()
-        return await fetchJSON('a/roomjoin/setParticipants',{roomId:roomid,participants:s_Roomsetting.participantsName});
+        return await fetchJSON('a/room/join/participants','POST',{roomId:roomid,participants:s_Roomsetting.participantsName});
     }else if(mode=="아래"){
         const index = s_Roomsetting.participantsName.indexOf(nickname)
         if(index<=s_Roomsetting.participantsName.length-2) [s_Roomsetting.participantsName[index], s_Roomsetting.participantsName[index+1]] = [s_Roomsetting.participantsName[index+1], s_Roomsetting.participantsName[index]]
         else {console.log('participants_list',s_Roomsetting.participantsName);throw('잘못된 위치에서 요청됨, 아래, ')}
         updateParticipantsInfo()
-        return await fetchJSON('a/roomjoin/setParticipants',{roomId:roomid,participants:s_Roomsetting.participantsName});
+        return await fetchJSON('a/room/join/participants','POST',{roomId:roomid,participants:s_Roomsetting.participantsName});
     }else if(mode=='취소'){
         // 참여자 목록에서 제외
         const index = s_Roomsetting.participantsName.indexOf(nickname)
         s_Roomsetting.participantsName.splice(index,1)
         updateParticipantsInfo()
-        return await fetchJSON('a/roomjoin/delParticipants',{roomId:roomid, playerIndex:index})
+        return await fetchJSON('a/room/join/participants','DELETE',{roomId:roomid, playerIndex:index})
     }
     else{
         console.error(`이상한 mode: ${mode}`)
@@ -390,7 +398,7 @@ function updateInitcntMax(){
 
     if($main.state != 'roomsetting') throw('[updateMemberInfo] not roomsetting')
 
-    console.log('[memberInfo]',memberInfo)
+    // console.log('[memberInfo]',memberInfo)
     const $participants_list = getElementById('participants_list')
     const $member_list = getElementById('member_list')
     // const $wait_list = getElementById('wait_list')
@@ -454,17 +462,17 @@ function updateParticipantsInfo(){
     roomInfoBelong = roominfo_joined
     roomInfoWaiting = roominfo_waiting
     if (state != 'roomlist') {console.error('[updateJoinroomList] state 맞지 않음'); return}
-    console.log('[updateJoinroomList]',roominfo_joined, roominfo_waiting)
+    console.log('[updateJoinroomList]','roominfo_joined',roominfo_joined, 'roominfo_waiting',roominfo_waiting)
     const $roomlistBelong = getElementById('roomlistBelong')
     // const $roomlistWaiting = getElementById('roomlistWaiting')
 
 
-    $roomlistBelong.innerHTML = (roominfo_joined.length|roominfo_waiting.length)? `<table class="table table-hover"><thead><tr><th>방 이름</th><th>방장</th><th>상태</th><tbody>`+roominfo_joined.map(v=>
-        `<tr><td><b>${pX(v.roomName)}</b></td> <td>${isMe(v.nickname)}</td><td> `
+    $roomlistBelong.innerHTML = (roominfo_joined.length|roominfo_waiting.length)? `<table class="table table-hover"><thead><tr><th>방 이름</th><th>인원</th><th>지난 게임</th><th>방장</th><th>설정</th><tbody>`+roominfo_joined.map(v=>
+        `<tr><td><b>${pX(v.roomName)}</b></td><td>${v.memberln}</td><td>${v.lastGameDate==null?'-':(new Date(v.lastGameDate)).toLocaleString()}</td><td>${isMe(v.nickname)}</td><td> `
         +`<button class="btn btn-outline-secondary" onclick=roomevent("${v.id}","${v.nickname == nickname ? 'setup_admin':'setup'}")>설정</button> `
         + (v.nickname == nickname ? '' : `<button class="btn btn-outline-danger" onclick=roomevent("${v.id}","withdraw")>탈퇴</button>  `)
         +`</td></tr>`).join('\n')
-        +roominfo_waiting.map(v=>`<tr><td><b>${pX(v.roomName)}</b></td> <td>${pX(v.nickname)}</td><td>수락 대기중</td><tr>`).join('\n')+'</tbody></table>':'초대 수락 대기중인 방 목록이 없습니다'
+        +roominfo_waiting.map(v=>`<tr><td><b>${pX(v.roomName)}</b></td> <td>${v.memberln}</td><td>${v.lastGameDate==null?'-':(new Date(v.lastGameDate)).toLocaleString()}</td><td>${pX(v.nickname)}</td><td>수락 대기중</td><tr>`).join('\n')+'</tbody></table>':'초대 수락 대기중인 방 목록이 없습니다'
         // +'</tbody></table>':'속해 있는 방 목록이 없습니다'
         // $roomlistWaiting.innerHTML = roominfo_waiting.length?`<table class="table table-hover"><thead><tr><th>방 이름</th><th>방장</th><tbody>`
 
@@ -472,11 +480,11 @@ function updateParticipantsInfo(){
 
  function updateRoomList(roominfo){
     roomInfoAll = roominfo
-    console.log('[updateRoomList]',roomInfoWaiting,roomInfoBelong,roominfo)//,roominfo[0].id,roomInfoWaiting.some(vv=>vv.id==roominfo[0].id),roomInfoBelong.some(vv=>vv.id==roominfo[0].id))
+    console.log('[updateRoomList]','roomInfoWaiting:',roomInfoWaiting,'roomInfoBelong:',roomInfoBelong,'roominfo:',roominfo)//,roominfo[0].id,roomInfoWaiting.some(vv=>vv.id==roominfo[0].id),roomInfoBelong.some(vv=>vv.id==roominfo[0].id))
     if (state != 'roomlist') {console.error('[updateRoomList] state 맞지 않음'); return}
     const $roomlistAll = getElementById('roomlistAll')
-    $roomlistAll.innerHTML = roominfo.length ?  `<table class="table table-hover"><thead><tr><th>방 이름</th><th>방장</th><th></th><tbody>`+roominfo.map(v=>
-        `<tr><td><b>${pX(v.roomName)}</b></td> <td>${isMe(v.nickname)}</td><td> `
+    $roomlistAll.innerHTML = roominfo.length ?  `<table class="table table-hover"><thead><tr><th>방 이름</th><th>인원</th><th>지난 게임</th><th>방장</th><th></th><tbody>`+roominfo.map(v=>
+        `<tr><td><b>${pX(v.roomName)}</b></td> <td>${v.memberln}</td><td>${v.lastGameDate==null?'-':(new Date(v.lastGameDate)).toLocaleString()}</td><td>${isMe(v.nickname)}</td><td> `
         +((roomInfoWaiting.some(vv=>vv.id==v.id)||roomInfoBelong.some(vv=>vv.id==v.id))?'':`<button class="btn btn-outline-secondary"  onclick=roomevent("${v.id}","join")>가입</button>`)
         +`</td></tr>`).join('\n')+'</tbody></table>':'생성된 방 목록이 없습니다'
     
@@ -485,9 +493,9 @@ function updateParticipantsInfo(){
 async function roomevent(roomId,mode){
     if(mode=='join'){ //가입
         if(!roomInfoAll.some(v=>v.id == roomId)) throw('없는 방')
-        const data = await fetchJSON('a/roomjoin/joinwaitlist',{roomId})
+        const data = await fetchJSON('a/room/join/waitlist','PUT',{roomId})
         roomInfoWaiting.push(roomInfoAll.filter(v=>v.id==roomId)[0]) // 대기실 목록에 추가
-        console.log('[roomevent]',data)
+        console.log('[roomevent]',data,roomInfoWaiting,roomInfoBelong,roomInfoAll)
         updateJoinroomList(roomInfoBelong,roomInfoWaiting)
         updateRoomList(roomInfoAll)
     }
@@ -503,8 +511,12 @@ async function roomevent(roomId,mode){
         if(!roomInfoBelong.some(v=>v.id == roomId)) throw('없는 방')
         const room = roomInfoBelong.filter(v=>v.id == roomId)[0]
         if(!roomInfoAll.some(v=>v.id == roomId)) throw('없는 방')
-        const data = await fetchJSON('a/roomjoin/withdraw',{roomId})
-        console.log(data)
+        const data = await fetchJSON('a/room/join/list','DELETE',{roomId})
+        console.log('[withdraw]',data)
+        const r = roomInfoBelong.filter(v=>v.id==roomId)[0]
+        roomInfoBelong.splice(roomInfoBelong.indexOf(r),1)
+        updateJoinroomList(roomInfoBelong,roomInfoWaiting)
+        updateRoomList(roomInfoAll)
     }else throw('잘못된 모드:'+mode)
 }
 window.roomevent = roomevent
@@ -526,8 +538,8 @@ async function updateRecords(){
 
     const $records = getElementById('records')
     const roomid = roomInfo.id
-    const data = await fetchJSON('a/roominfo/records',{roomId:roomid})
-    console.log('[updateRecords]',data)
+    const data = await fetchJSON('a/room/records','GET',{roomId:roomid})
+    // console.log('[updateRecords]',data)
     class countList{
         constructor(){
         this.out = {}
@@ -555,7 +567,7 @@ async function updateRecords(){
             out[pstring].add(rank)
         })
     }
-    let outHTML = `<table class="table table-hover"><thead><tr><th>닉네임</th><th><span id="tooltip_score" data-toggle="tooltip" title="2<sup>-(등수)</sup>의 합계">승점</span></th>${(new Array(최대등수)).fill(1).map((v,i)=>`<th>${i+1}등</th>`).join('')}<tbody>`
+    let outHTML = `<table class="table table-hover"><thead><tr><th>닉네임</th><th><span id="tooltip_score" data-toggle="tooltip" title="각 게임별 (½)<sup>(순위)</sup>의 합계">승점</span></th>${(new Array(최대등수)).fill(1).map((v,i)=>`<th>${i+1}등</th>`).join('')}<tbody>`
     for (const playerName in out) {playerList.push({name:playerName, score:out[playerName].score})}
     playerList.sort((a,b)=>a.score<b.score)
     for (const {name,score} of playerList){
@@ -594,16 +606,15 @@ export class Status_roomsetting{
     set participantsName(ar){
         if(!Array.isArray(ar)) throw('12')
         if(!ar.every(v=>typeof v == 'string')) throw('문자만 든 배열이 아님')
-        this.__participants = ar
-        this.gamebuttoncheck()
-
-        
+        this.__participantsName = ar
+         this.gamebuttoncheck()
     }
 
     set participants(ar){
+        console.log('[set participants]',ar, ar.map(v=>v.nickname))
         if(!Array.isArray(ar)) throw('12')
         this.__participants = ar
-        this.__participantsName = ar.map(v=>v.nickname)
+        this.participantsName = ar.map(v=>v.nickname)
         const $participants_list = document.getElementById('participants_list')
 
         if(is_addmin){
@@ -664,12 +675,12 @@ export class Status_roomsetting{
             }
         })
         lastsend = new Date()
-        $btn_participantsShuffle.addEventListener('click',async ()=>{shuffle(s_Roomsetting.participantsName); await fetchJSON('a/roomjoin/setParticipants',{participants:s_Roomsetting.participantsName, roomId:roomData.id})})
+        $btn_participantsShuffle.addEventListener('click',async ()=>{shuffle(s_Roomsetting.participantsName); await fetchJSON('a/room/join/participants','POST',{participants:s_Roomsetting.participantsName, roomId:roomData.id})})
         $start_game.addEventListener('click',()=>{status_game.start()})
     
-        fetchJSON('a/roominfo/memberInfo',{roomId:roomData.id}).then(updateMemberInfo)
+        fetchJSON('a/room/members','GET',{roomId:roomData.id}).then(updateMemberInfo)
     
-        fetchJSON('a/roominfo/getSetting',{roomId:roomData.id}).then(updateRoomgamesetting)
+        fetchJSON('a/room/setting','GET',{roomId:roomData.id}).then(updateRoomgamesetting)
     
         function add_onlyforadmin_tooltip(ele){
             if(!ele) return
@@ -695,6 +706,8 @@ export class Status_roomsetting{
     
             $btn_participantsShuffle.disabled = true
             $start_game.disabled = true
+            console.log('[$start_game] 비활성화',$start_game,$start_game.disabled)
+            
         }
     
         
@@ -709,6 +722,8 @@ export class Status_roomsetting{
      */
     gamebuttoncheck(){
         if(state != 'roomsetting') return
+        if(this.is_addmin === false) return
+        console.log('[gamebuttoncheck]', this.participantsName, this.participantsName.length,this.is_addmin)
         const $btn_start_game = document.getElementById('start_game')
         $btn_start_game.disabled =  this.participantsName.length<2
 
@@ -722,6 +737,7 @@ export class Status_roomsetting{
 
     gamestar_btn_tooptip_setting(){
         if(state != 'roomsetting') return
+        console.log('[gamestar_btn_tooptip_setting]')
         if(bootstrap){
             const ele = document.getElementById('start_game_toggle')
             if(!is_addmin) ele.title = '관리자 전용'
@@ -875,7 +891,7 @@ export  class Status_game{
 
             if(state !== 'game') {
                 this.apply()
-                const info = await fetchJSON('a/game/info',{})
+                const info = await fetchJSON('a/game/info','GET',{})
                 status_game.applyTurn(info)
              }
 
@@ -1107,7 +1123,7 @@ export  class Status_game{
 
         this.remainCards = (new Array(s_Roomsetting.participantsName.length)).fill(7)
         this.myOrder = s_Roomsetting.participantsName.indexOf(nickname)
-        await fetchJSON('a/roominfo/gameStart',{roomId:roomInfo.id})
+        await fetchJSON('a/room/gameStart','POST',{roomId:roomInfo.id})
         this.apply()
     }
 
@@ -1158,9 +1174,9 @@ export  class Status_game{
         for(const btn of [$btn_draw, $btn_turnChange, ...$myCards_btns]) btn.disabled = !this.isMyOrder()
 
 
-        fetchJSON('./a/game/getMyCardList',{}).then(cardList=>{this.cardList = cardList;this.applyCardList();})
+        fetchJSON('./a/game/mycards','GET',{}).then(cardList=>{this.cardList = cardList;this.applyCardList();})
 
-        fetchJSON('a/game/ranking',{}).then(ranking=>{
+        fetchJSON('a/game/ranking','GET',{}).then(ranking=>{
             console.log('[a/game/ranking]',ranking)
             this.ranking = ranking;
             this.updateRanking()
@@ -1196,7 +1212,7 @@ export  class Status_game{
         while(!['♠','♣','♥','♦'].includes(sult)) sult = await ac()
         // console.log('[__askColor]',sult)
         try{
-            const data = await fetchJSON('a/game/askColor',{sult})
+            const data = await fetchJSON('a/game/askColor','POST',{sult})
             console.log('[__askColor]',data)
         }catch(E){
             console.error('askColor 실패, w',E)
@@ -1240,6 +1256,8 @@ export  class Status_game{
         const $btn_turnChange = getElementById('btn_turnChange');
         const $myCards_btns = getElementById('myCards').getElementsByTagName('button')
         for(const btn of [$btn_draw, $btn_turnChange, ...$myCards_btns]) btn.disabled = !this.isMyOrder()
+
+        
 
 
 
@@ -1336,7 +1354,7 @@ export  class Status_game{
     async dropCard(card){
         // this.#io.emit('onecard.dropCard',card)
         try{
-            await fetchJSON('a/game/drop',{card})
+            await fetchJSON('a/game/drop','POST',{card})
             this.thisOrderPlayerDroped = true
         }catch(e){
             // alert('카드를 내는 중 오류가 발생했습니다, error:'+e)
@@ -1351,7 +1369,7 @@ export  class Status_game{
      */
     async drawCard(){
         try{
-            const newCard = await fetchJSON('./a/game/draw',{});
+            const newCard = await fetchJSON('./a/game/draw','GET',{});
             console.log('[drawCard]',newCard,this.cardList,JSON.stringify(this.cardList), )
             if(newCard===null) {alert('더 이상 뽑을 수 있는 남아있는 카드가 없습니다.'); return}
             if(this.cardList.some(c=>(c.figure==newCard.figure)&&(c.sult==newCard.sult)&&(c.type==newCard.type))){
@@ -1385,7 +1403,7 @@ export  class Status_game{
         //턴일 넘길 수 없는 경우면 오류 출력
         if(this.isMyOrder()===false) {alert('자신의 차례가 아닙니다'); throw('차례X')}
         try{
-            await fetchJSON('a/game/turnChange',{})
+            await fetchJSON('a/game/turnChange','POST',{})
             this.orderChangeHandler()
         }catch(e){
             alert('현재 턴을 바꿀 수 없습니다. 오류:'+e)
